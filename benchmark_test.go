@@ -2,73 +2,78 @@ package main
 
 import (
 	"fmt"
-	//"runtime"
 	"sync"
 	"testing"
-	"time"
 )
 
-const loop = 100
-const delay = time.Millisecond
-
-func BenchmarkFmtPrint(b *testing.B) {
-	wg := &sync.WaitGroup{}
-	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		go func() {
-			for i := 0; i < loop; i++ {
+func benchmarkFmtPrint(routines int, b *testing.B) {
+	for j := 0; j < b.N; j++ {
+		wg := &sync.WaitGroup{}
+		for i := 0; i < routines; i++ {
+			wg.Add(1)
+			go func() {
 				fmt.Print("")
-				time.Sleep(delay)
-			}
-			wg.Done()
-		}()
+				wg.Done()
+			}()
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 }
+func BenchmarkFmtPrint1(b *testing.B)    { benchmarkFmtPrint(1, b) }
+func BenchmarkFmtPrint10(b *testing.B)   { benchmarkFmtPrint(10, b) }
+func BenchmarkFmtPrint100(b *testing.B)  { benchmarkFmtPrint(100, b) }
+func BenchmarkFmtPrint1000(b *testing.B) { benchmarkFmtPrint(1000, b) }
 
-func BenchmarkMutexFmtPrint(b *testing.B) {
-	wg := &sync.WaitGroup{}
-	var mutex sync.Mutex
-	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		go func() {
-			for i := 0; i < loop; i++ {
+func benchmarkMutexFmtPrint(routines int, b *testing.B) {
+	for j := 0; j < b.N; j++ {
+		wg := &sync.WaitGroup{}
+		var mutex sync.Mutex
+		for i := 0; i < routines; i++ {
+			wg.Add(1)
+			go func() {
 				mutex.Lock()
 				fmt.Print("")
 				mutex.Unlock()
-				time.Sleep(delay)
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-}
-
-func BenchmarkChannelFmtPrint(b *testing.B) {
-	c := make(chan string)
-	q := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case s := <-c:
-				fmt.Print(s)
-			case <-q:
-				return
-			}
+				wg.Done()
+			}()
 		}
-	}()
-
-	wg := &sync.WaitGroup{}
-	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		go func() {
-			for i := 0; i < loop; i++ {
-				c <- ""
-				time.Sleep(delay)
-			}
-			wg.Done()
-		}()
+		wg.Wait()
 	}
-	wg.Wait()
-	q <- struct{}{}
 }
+func BenchmarkMutexFmtPrint1(b *testing.B)    { benchmarkMutexFmtPrint(1, b) }
+func BenchmarkMutexFmtPrint10(b *testing.B)   { benchmarkMutexFmtPrint(10, b) }
+func BenchmarkMutexFmtPrint100(b *testing.B)  { benchmarkMutexFmtPrint(100, b) }
+func BenchmarkMutexFmtPrint1000(b *testing.B) { benchmarkMutexFmtPrint(1000, b) }
+
+func benchmarkChannelFmtPrint(routines int, b *testing.B) {
+	for j := 0; j < b.N; j++ {
+		c := make(chan string)
+		q := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case s := <-c:
+					fmt.Print(s)
+				case <-q:
+					return
+				}
+			}
+		}()
+
+		wg := &sync.WaitGroup{}
+		for i := 0; i < routines; i++ {
+			wg.Add(1)
+			go func() {
+				c <- ""
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		q <- struct{}{}
+	}
+}
+
+func BenchmarkChannelFmtPrint1(b *testing.B)    { benchmarkChannelFmtPrint(1, b) }
+func BenchmarkChannelFmtPrint10(b *testing.B)   { benchmarkChannelFmtPrint(10, b) }
+func BenchmarkChannelFmtPrint100(b *testing.B)  { benchmarkChannelFmtPrint(100, b) }
+func BenchmarkChannelFmtPrint1000(b *testing.B) { benchmarkChannelFmtPrint(1000, b) }
