@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	//"runtime"
 	"sync"
 	"testing"
+	"time"
 )
 
 const loop = 100
+const delay = time.Millisecond
 
 func BenchmarkFmtPrint(b *testing.B) {
 	wg := &sync.WaitGroup{}
@@ -15,6 +18,7 @@ func BenchmarkFmtPrint(b *testing.B) {
 		go func() {
 			for i := 0; i < loop; i++ {
 				fmt.Print("")
+				time.Sleep(delay)
 			}
 			wg.Done()
 		}()
@@ -28,10 +32,11 @@ func BenchmarkMutexFmtPrint(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		go func() {
-			mutex.Lock()
-			defer mutex.Unlock()
 			for i := 0; i < loop; i++ {
+				mutex.Lock()
 				fmt.Print("")
+				mutex.Unlock()
+				time.Sleep(delay)
 			}
 			wg.Done()
 		}()
@@ -59,6 +64,7 @@ func BenchmarkChannelFmtPrint(b *testing.B) {
 		go func() {
 			for i := 0; i < loop; i++ {
 				c <- ""
+				time.Sleep(delay)
 			}
 			wg.Done()
 		}()
