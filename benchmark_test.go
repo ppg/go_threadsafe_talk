@@ -6,12 +6,16 @@ import (
 	"testing"
 )
 
+const loop = 100
+
 func BenchmarkFmtPrint(b *testing.B) {
 	wg := &sync.WaitGroup{}
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		go func() {
-			fmt.Print("")
+			for i := 0; i < loop; i++ {
+				fmt.Print("")
+			}
 			wg.Done()
 		}()
 	}
@@ -26,7 +30,9 @@ func BenchmarkMutexFmtPrint(b *testing.B) {
 		go func() {
 			mutex.Lock()
 			defer mutex.Unlock()
-			fmt.Print("")
+			for i := 0; i < loop; i++ {
+				fmt.Print("")
+			}
 			wg.Done()
 		}()
 	}
@@ -37,10 +43,13 @@ func BenchmarkChannelFmtPrint(b *testing.B) {
 	c := make(chan string)
 	q := make(chan struct{})
 	go func() {
-		select {
-		case s := <-c:
-			fmt.Print(s)
-		case <-q:
+		for {
+			select {
+			case s := <-c:
+				fmt.Print(s)
+			case <-q:
+				return
+			}
 		}
 	}()
 
@@ -48,7 +57,9 @@ func BenchmarkChannelFmtPrint(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		go func() {
-			c <- ""
+			for i := 0; i < loop; i++ {
+				c <- ""
+			}
 			wg.Done()
 		}()
 	}
